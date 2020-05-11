@@ -76,7 +76,6 @@ fn main() {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
-
             (owners, info.id)
         }
         Err(err) => panic!("Could not access application info: {:?}", err),
@@ -85,7 +84,7 @@ fn main() {
     client.with_framework(
         StandardFramework::new()
             .configure(|c| {
-                c.prefix("!")
+                c.prefix("!rfr ")
                     .on_mention(Some(bot_id))
                     .case_insensitivity(true)
                     .owners(owners)
