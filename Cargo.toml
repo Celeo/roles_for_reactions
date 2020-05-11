@@ -1,0 +1,21 @@
+[package]
+name = "roles_for_reactions"
+version = "0.1.0"
+authors = ["Celeo <mattboulanger@fastmail.com>"]
+edition = "2018"
+description = ""
+readme = "README.md"
+homepage = "https://github.com/celeo/roles_for_reactions"
+repository = "https://github.com/celeo/roles_for_reactions"
+license = "MIT OR Apache-2.0"
+keywords = [
+]
+exclude = [
+  ".github",
+  "licenses"
+]
+
+[dependencies]
+log = "0.4.8"
+pretty_env_logger = "0.4.0"
+serenity = "0.8.6"
