@@ -47,6 +47,8 @@ impl SetupState {
     }
 }
 
+// TODO struct and typemapkey impl for the messages actually being watched
+
 struct StateManager;
 
 impl TypeMapKey for StateManager {
@@ -74,7 +76,8 @@ impl EventHandler for Handler {
         if message.author.bot {
             return;
         }
-        // get map
+
+        // get manager
         let mut data = ctx.data.write();
         let manager = data
             .get_mut::<StateManager>()
@@ -89,6 +92,7 @@ impl EventHandler for Handler {
             return;
         }
 
+        // get current state; return if there isn't any
         let state = match manager.get_mut(&message.author.name) {
             Some(s) => s,
             None => return,
@@ -96,8 +100,29 @@ impl EventHandler for Handler {
 
         // if no post content, the first message is that
         if state.post_content.is_none() {
-            state.post_content = Some(String::from(""))
+            state.post_content = Some(message.content.clone());
+            if let Err(e) = message.reply(
+                &ctx,
+                "Got it.\n\nNow, enter an emoji and the role name, 1 pair per \
+message with a space between, like [emoji] [role name]. Send a 'done' message when done.",
+            ) {
+                error!("Could not tell user next message: {}", e);
+            };
+            return;
         }
+
+        if message.content.to_lowercase() == "done" {
+            manager.remove(&message.author.name);
+            if let Err(e) = message.reply(&ctx, "All done! See the post in the channel.") {
+                error!("Could not tell user done message: {}", e);
+            }
+            // TODO make post in the configured channel including the emojis, etc.
+            // TODO save `state` somewhere
+            return;
+        }
+
+        // TODO append emoji and role name to vec
+        debug!("{:?}", message.content);
     }
 }
 
@@ -148,6 +173,14 @@ fn bot_help(
     owners: HashSet<UserId>,
 ) -> CommandResult {
     help_commands::with_embeds(context, msg, args, help_options, groups, owners)
+}
+
+fn load_configuration() {
+    // TODO
+}
+
+fn save_configuration() {
+    // TODO
 }
 
 fn main() {

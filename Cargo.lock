@@ -937,6 +937,8 @@ dependencies = [
  "kankyo",
  "log",
  "pretty_env_logger",
+ "serde",
+ "serde_json",
  "serenity",
 ]
 
