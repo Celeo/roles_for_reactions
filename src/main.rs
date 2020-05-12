@@ -1,4 +1,5 @@
 use log::{debug, error, info};
+use serde::{Deserialize, Serialize};
 use serenity::{
     client::Context,
     framework::{
@@ -19,16 +20,27 @@ use serenity::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    env, process,
+    env,
+    error::Error,
+    process,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ReactionRole {
-    emoji_id: String,
+    emoji: char,
     role_name: String,
 }
 
-#[derive(Debug)]
+impl ReactionRole {
+    fn new(emoji: char, role_name: &str) -> Self {
+        Self {
+            emoji,
+            role_name: role_name.to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct SetupState {
     channel_id: u64,
     guild_id: u64,
@@ -37,6 +49,7 @@ struct SetupState {
 }
 
 impl SetupState {
+    /// Create a new, empty `SetupState`.
     fn new(channel_id: u64, guild_id: u64) -> Self {
         Self {
             channel_id: channel_id.to_owned(),
@@ -50,6 +63,20 @@ impl SetupState {
 // TODO struct and typemapkey impl for the messages actually being watched
 
 struct StateManager;
+
+impl StateManager {
+    /// Save the manager's data to disk.
+    fn save(&self) -> Result<(), Box<dyn Error>> {
+        // TODO
+        unimplemented!()
+    }
+
+    /// Load the manager's data from disk.
+    fn load() -> Result<Self, Box<dyn Error>> {
+        // TODO
+        unimplemented!()
+    }
+}
 
 impl TypeMapKey for StateManager {
     type Value = HashMap<String, SetupState>;
@@ -121,8 +148,62 @@ message with a space between, like [emoji] [role name]. Send a 'done' message wh
             return;
         }
 
-        // TODO append emoji and role name to vec
-        debug!("{:?}", message.content);
+        // get emoji and role name from message
+        let mut chars = message.content.chars();
+        let emoji = match chars.next() {
+            Some(e) => e,
+            None => {
+                if let Err(e) = message.reply(
+                    &ctx,
+                    "Doesn't look like the message format was right - it's [emoji] [role name]",
+                ) {
+                    error!("Could not tell user that format was wrong: {}", e);
+                }
+                return;
+            }
+        };
+        let role_name: String = chars.skip(1).collect();
+        // get guild for validation
+        let guild = match ctx.http.get_guild(state.guild_id) {
+            Ok(g) => g,
+            Err(e) => {
+                error!("Could not find guild by id: {}", e);
+                if let Err(e2) = message.reply(&ctx, "Could not find your guild!") {
+                    error!("Could not tell user that could not find guild: {}", e2);
+                }
+                return;
+            }
+        };
+        // match role_name against actual roles
+        let all_role_names = guild
+            .roles
+            .values()
+            .map(|r| r.name.clone())
+            .filter(|name| name != "@everyone")
+            .collect::<Vec<String>>();
+        let matching_roles = all_role_names
+            .iter()
+            .filter(|&r| r == &role_name)
+            .take(1)
+            .collect::<Vec<_>>();
+        if matching_roles.first().is_none() {
+            if let Err(e2) = message.reply(
+                &ctx,
+                format!(
+                    "Could not find that role. Valid role names are {}",
+                    all_role_names.join(", ")
+                ),
+            ) {
+                error!("Could not tell user that could not find guild: {}", e2);
+            }
+            return;
+        }
+
+        // store the reaction + role
+        state.reactions.push(ReactionRole::new(emoji, &role_name));
+        if let Err(e) = message.reply(&ctx, "Got it. Enter another, or 'done' to finish") {
+            error!("Could not prompt user for next reaction + role: {}", e);
+        };
     }
 }
 
@@ -175,14 +256,7 @@ fn bot_help(
     help_commands::with_embeds(context, msg, args, help_options, groups, owners)
 }
 
-fn load_configuration() {
-    // TODO
-}
-
-fn save_configuration() {
-    // TODO
-}
-
+/// Entry point.
 fn main() {
     kankyo::init().expect("Could not load .env file");
     if env::var("RUST_LOG").is_err() {
