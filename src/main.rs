@@ -14,10 +14,44 @@ use serenity::{
         gateway::Ready,
         id::UserId,
     },
-    prelude::EventHandler,
+    prelude::{EventHandler, TypeMapKey},
     Client,
 };
-use std::{collections::HashSet, env};
+use std::{
+    collections::{HashMap, HashSet},
+    env, process,
+};
+
+#[derive(Debug)]
+struct ReactionRole {
+    emoji_id: String,
+    role_name: String,
+}
+
+#[derive(Debug)]
+struct SetupState {
+    channel_id: u64,
+    guild_id: u64,
+    post_content: Option<String>,
+    reactions: Vec<ReactionRole>,
+}
+
+impl SetupState {
+    fn new(channel_id: u64, guild_id: u64) -> Self {
+        Self {
+            channel_id: channel_id.to_owned(),
+            guild_id: guild_id.to_owned(),
+            post_content: None,
+            reactions: Vec::new(),
+        }
+    }
+}
+
+struct StateManager;
+
+impl TypeMapKey for StateManager {
+    type Value = HashMap<String, SetupState>;
+}
 
 struct Handler;
 
@@ -27,8 +61,43 @@ impl EventHandler for Handler {
     }
 
     fn reaction_add(&self, _ctx: Context, add_reaction: Reaction) {
-        // TODO
         debug!("Reaction added: {:?}", add_reaction);
+        // ...
+    }
+
+    fn message(&self, ctx: Context, message: Message) {
+        if message.guild_id.is_some() {
+            // in guilds, users use the commands to interact with the bot
+            return;
+        }
+        // return if author is a bot
+        if message.author.bot {
+            return;
+        }
+        // get map
+        let mut data = ctx.data.write();
+        let manager = data
+            .get_mut::<StateManager>()
+            .expect("Could not get manager from context");
+
+        // allow user to quit setup
+        if message.content.to_lowercase() == "quit" {
+            manager.remove(&message.author.name);
+            if let Err(e) = message.reply(&ctx, "Setup terminated.") {
+                error!("Could not tell user setup was terminated: {}", e);
+            };
+            return;
+        }
+
+        let state = match manager.get_mut(&message.author.name) {
+            Some(s) => s,
+            None => return,
+        };
+
+        // if no post content, the first message is that
+        if state.post_content.is_none() {
+            state.post_content = Some(String::from(""))
+        }
     }
 }
 
@@ -36,17 +105,39 @@ impl EventHandler for Handler {
 #[commands(setup)]
 struct General;
 
+/// Command handler for 'setup'.
+///
+/// Sets the state for the user to the starting state, recording
+/// the channel id and guild id that the command was used in.
 #[command]
 #[description = "Setup a new post to watch"]
-fn setup(context: &mut Context, message: &Message) -> CommandResult {
-    // TODO
-    message.reply(
-        &context,
-        "I see you, but this command isn't yet implemented.",
-    )?;
+fn setup(ctx: &mut Context, message: &Message) -> CommandResult {
+    if message.guild_id.is_none() {
+        // command only works in channels, not DMs
+        return Ok(());
+    }
+    message.reply(&ctx, "Let's do it! Check your DMs.")?;
+    let mut data = ctx.data.write();
+    let manager = data
+        .get_mut::<StateManager>()
+        .expect("Could not get StateManager from context");
+    manager.insert(
+        message.author.name.clone(),
+        SetupState::new(
+            *message.channel_id.as_u64(),
+            *message.guild_id.unwrap().as_u64(),
+        ),
+    );
+    message.author.direct_message(&ctx, |m| {
+        m.content(format!(
+            "Setup post in '{}'. Enter the content of the post as a reply to this.",
+            message.channel(&ctx).unwrap()
+        ))
+    })?;
     Ok(())
 }
 
+// Configure the bot to use the built-in help.
 #[help]
 fn bot_help(
     context: &mut Context,
@@ -60,13 +151,18 @@ fn bot_help(
 }
 
 fn main() {
+    kankyo::init().expect("Could not load .env file");
     if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "roles_for_reactions");
     }
     pretty_env_logger::init();
-    debug!("Loading env");
-    kankyo::init().expect("Could not load .env file");
-    let token = env::var("DISCORD_TOKEN").expect("Missing DISCORD_TOKEN environment variable");
+    let token = match env::var("DISCORD_TOKEN") {
+        Ok(t) => t,
+        Err(_) => {
+            eprintln!("Missing DISCORD_TOKEN environment variable");
+            process::exit(1);
+        }
+    };
 
     debug!("Creating client");
     let mut client = Client::new(&token, Handler).expect("Could not create client");
@@ -80,6 +176,7 @@ fn main() {
         }
         Err(err) => panic!("Could not access application info: {:?}", err),
     };
+
     debug!("Configuring commands");
     client.with_framework(
         StandardFramework::new()
@@ -106,6 +203,12 @@ fn main() {
             .group(&GENERAL_GROUP)
             .help(&BOT_HELP),
     );
+
+    debug!("Setting up memory");
+    {
+        let mut data = client.data.write();
+        data.insert::<StateManager>(HashMap::new());
+    }
 
     debug!("Starting bot");
     if let Err(err) = client.start() {
