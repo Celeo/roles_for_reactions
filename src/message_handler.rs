@@ -16,19 +16,19 @@ pub(crate) fn message_handler(ctx: Context, message: Message) -> Result<(), Box<
 
     // get manager
     let mut data = ctx.data.write();
-    let manager = data
+    let state_manager = data
         .get_mut::<StateManager>()
-        .expect("Could not get manager from context");
+        .expect("Could not get state_manager from context");
 
     // allow user to quit setup
     if message.content.to_lowercase() == "quit" {
-        manager.remove(&message.author.name);
+        state_manager.remove(&message.author.name);
         message.reply(&ctx, "Setup terminated.")?;
         return Ok(());
     }
 
     // get current state; return if there isn't any
-    let state = match manager.get_mut(&message.author.name) {
+    let state = match state_manager.get_mut(&message.author.name) {
         Some(s) => s,
         None => return Ok(()),
     };
@@ -50,7 +50,7 @@ message with a space between, like [emoji] [role name]. Send a 'done' message wh
             "Adding new monitor for guild_id {} and channel_id {}",
             state.guild_id, state.channel_id
         );
-        manager.remove(&message.author.name);
+        state_manager.remove(&message.author.name);
         message.reply(&ctx, "All done! See the post in the channel.")?;
         // TODO make post in the configured channel including the emojis, etc.
         // TODO save the state somewhere

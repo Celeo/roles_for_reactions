@@ -25,7 +25,7 @@ use std::{
 mod message_handler;
 use message_handler::message_handler;
 mod shared;
-use shared::{SetupState, StateManager};
+use shared::{MonitorManager, SetupState, StateManager};
 
 struct Handler;
 
@@ -36,7 +36,7 @@ impl EventHandler for Handler {
 
     fn reaction_add(&self, _ctx: Context, add_reaction: Reaction) {
         debug!("Reaction added: {:?}", add_reaction);
-        // ...
+        // TODO check monitors, do stuff
     }
 
     fn message(&self, ctx: Context, message: Message) {
@@ -154,6 +154,14 @@ fn main() {
     {
         let mut data = client.data.write();
         data.insert::<StateManager>(HashMap::new());
+        let monitor_data = match MonitorManager::load() {
+            Ok(d) => d,
+            Err(e) => {
+                error!("Could not load monitor configuration: {}", e);
+                process::exit(1);
+            }
+        };
+        data.insert::<MonitorManager>(monitor_data);
     }
 
     debug!("Starting bot");

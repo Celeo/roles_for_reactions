@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
-use std::{collections::HashMap, error::Error, fs::write};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs::{read_to_string, write},
+    path::Path,
+};
 
 const DATA_FILE_NAME: &str = "data.json";
 
@@ -46,6 +51,17 @@ pub(crate) struct Monitor {
     pub(crate) reactions: Vec<ReactionRole>,
 }
 
+impl Monitor {
+    /// Create a new struct instance.
+    pub(crate) fn new(channel_id: u64, guild_id: u64, reactions: &Vec<ReactionRole>) -> Self {
+        Self {
+            channel_id,
+            guild_id,
+            reactions: reactions.to_owned(),
+        }
+    }
+}
+
 pub(crate) struct MonitorManager;
 
 impl TypeMapKey for MonitorManager {
@@ -62,8 +78,13 @@ impl MonitorManager {
 
     /// Load the manager's data from disk.
     pub(crate) fn load() -> Result<Vec<Monitor>, Box<dyn Error>> {
-        // TODO
-        unimplemented!()
+        let path = Path::new(DATA_FILE_NAME);
+        if !path.exists() {
+            return Ok(vec![]);
+        }
+        let content = read_to_string(path)?;
+        let parsed: Vec<Monitor> = serde_json::from_str(&content)?;
+        Ok(parsed)
     }
 }
 
