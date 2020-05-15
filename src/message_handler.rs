@@ -1,6 +1,11 @@
 use crate::shared::{Monitor, MonitorManager, ReactionRole, StateManager};
 use log::{debug, error, info};
-use serenity::{client::Context, model::channel::Channel, model::channel::Message};
+use serenity::{
+    client::Context,
+    model::channel::Message,
+    model::channel::{Channel, ReactionType},
+    utils::MessageBuilder,
+};
 use std::error::Error;
 
 /// Return whether the message should be ignored.
@@ -34,6 +39,7 @@ fn handle_done(ctx: &Context, message: &Message) -> Result<(), Box<dyn Error>> {
     let state_manager = data
         .get_mut::<StateManager>()
         .expect("Could not get state_manager from context");
+
     debug!("Removing setup from manager");
     let state = match state_manager.remove(&message.author.name) {
         Some(s) => s,
@@ -46,12 +52,17 @@ fn handle_done(ctx: &Context, message: &Message) -> Result<(), Box<dyn Error>> {
             return Ok(());
         }
     };
+
+    // unwrap here is safe because of the logic in 'message_handler'
+    let to_post = MessageBuilder::new()
+        .push(state.post_content.unwrap())
+        .build();
+
     debug!("Posting new message");
     let channel: Channel = ctx.http.get_channel(state.channel_id)?;
-    // note: unwrapping 'state.post_content' here is safe because of the logic in the 'handle_interview' function
     let posted_message = match channel {
         Channel::Group(_) => match channel.group() {
-            Some(lock) => lock.read().say(ctx, state.post_content.unwrap())?,
+            Some(lock) => lock.read().say(ctx, to_post)?,
             None => {
                 error!("Could not retrieve the channel by id {}", state.channel_id);
                 message.reply(ctx, "The channel reference could not be retrieved")?;
@@ -59,7 +70,7 @@ fn handle_done(ctx: &Context, message: &Message) -> Result<(), Box<dyn Error>> {
             }
         },
         Channel::Private(_) => match channel.private() {
-            Some(lock) => lock.read().say(ctx, state.post_content.unwrap())?,
+            Some(lock) => lock.read().say(ctx, to_post)?,
             None => {
                 error!("Could not retrieve the channel by id {}", state.channel_id);
                 message.reply(ctx, "The channel reference could not be retrieved")?;
@@ -67,7 +78,7 @@ fn handle_done(ctx: &Context, message: &Message) -> Result<(), Box<dyn Error>> {
             }
         },
         Channel::Guild(_) => match channel.guild() {
-            Some(lock) => lock.read().say(ctx, state.post_content.unwrap())?,
+            Some(lock) => lock.read().say(ctx, to_post)?,
             None => {
                 error!("Could not retrieve the channel by id {}", state.channel_id);
                 message.reply(ctx, "The channel reference could not be retrieved")?;
@@ -81,7 +92,14 @@ fn handle_done(ctx: &Context, message: &Message) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    // TODO add the base reactions to the message
+    // add the reactions to the message
+    for reaction in &state.reactions {
+        ctx.http.create_reaction(
+            state.channel_id,
+            *posted_message.id.as_u64(),
+            &ReactionType::Unicode(format!("{}", reaction.emoji)),
+        )?;
+    }
 
     debug!("Adding to monitor manager and saving to config file");
     let monitor_manager = data

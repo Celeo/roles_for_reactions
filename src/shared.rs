@@ -1,3 +1,4 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
 use serenity::prelude::TypeMapKey;
 use std::{
@@ -63,7 +64,7 @@ impl Monitor {
         channel_id: u64,
         guild_id: u64,
         message_id: u64,
-        reactions: &Vec<ReactionRole>,
+        reactions: &[ReactionRole],
     ) -> Self {
         Self {
             channel_id,
@@ -86,6 +87,7 @@ impl MonitorManager {
     pub(crate) fn save(values: &[Monitor]) -> Result<(), Box<dyn Error>> {
         let content = serde_json::to_string(values)?;
         write(DATA_FILE_NAME, content)?;
+        debug!("Wrote monitors to the config file");
         Ok(())
     }
 
@@ -93,10 +95,12 @@ impl MonitorManager {
     pub(crate) fn load() -> Result<Vec<Monitor>, Box<dyn Error>> {
         let path = Path::new(DATA_FILE_NAME);
         if !path.exists() {
+            debug!("No config file found - creating new monitor list");
             return Ok(vec![]);
         }
         let content = read_to_string(path)?;
         let parsed: Vec<Monitor> = serde_json::from_str(&content)?;
+        debug!("Loaded {} monitors from the config file", parsed.len());
         Ok(parsed)
     }
 }

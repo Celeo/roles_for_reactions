@@ -24,11 +24,13 @@ use std::{
 
 mod message_handler;
 use message_handler::message_handler;
+mod reaction_handler;
+use reaction_handler::reaction_handler;
 mod shared;
 use shared::{MonitorManager, SetupState, StateManager};
 
 /// Struct for implementing the `EventHandler` trait on for
-/// receiving events from Discord.
+/// receiving events.
 struct Handler;
 
 impl EventHandler for Handler {
@@ -38,9 +40,10 @@ impl EventHandler for Handler {
     }
 
     /// Called when a reaction is added to a message the bot can see.
-    fn reaction_add(&self, _ctx: Context, add_reaction: Reaction) {
-        debug!("Reaction added: {:?}", add_reaction);
-        // TODO check monitors, do stuff
+    fn reaction_add(&self, ctx: Context, add_reaction: Reaction) {
+        if let Err(e) = reaction_handler(ctx, add_reaction) {
+            error!("Could not process message: {}", e);
+        };
     }
 
     /// Called when a message is added that the bot can see.
