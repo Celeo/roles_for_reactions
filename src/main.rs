@@ -70,6 +70,9 @@ fn setup(ctx: &mut Context, message: &Message) -> CommandResult {
         // command only works in channels, not DMs
         return Ok(());
     }
+
+    // TODO check that the user making the request has the 'manage roles' permissions.
+
     message.reply(&ctx, "Let's do it! Check your DMs.")?;
     let mut data = ctx.data.write();
     let manager = data
