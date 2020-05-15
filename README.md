@@ -2,15 +2,18 @@
 
 ![Rust CI](https://github.com/Celeo/roles_for_reactions/workflows/Rust%20CI/badge.svg?branch=master)
 
-DESCRIPTION
+A [Discord](https://discord.com/) bot for allowing users to self-assign roles by adding reactions to a message.
 
 ## Installing
 
-INSTALLING
+TBD
 
 ## Using
 
-USING
+1. Create a [Discord app](https://discord.com/developers/applications)
+1. Add a bot account to the app
+1. Copy the bot's token, and put it into a file next to the binary called `.env` in the format `DISCORD_TOKEN=<your token here>`
+1. Run the executable
 
 ## Developing
 
@@ -28,6 +31,8 @@ git clone https://github.com/Celeo/roles_for_reactions
 cd roles_for_reactions
 cargo build
 ```
+
+If you have [just](https://github.com/casey/just) installed, just run `just` in the project root.
 
 ## License
 
