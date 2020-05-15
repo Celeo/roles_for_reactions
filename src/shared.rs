@@ -29,7 +29,7 @@ impl ReactionRole {
 }
 
 /// Struct representing a monitor being constructed.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub(crate) struct SetupState {
     pub(crate) channel_id: u64,
     pub(crate) guild_id: u64,
