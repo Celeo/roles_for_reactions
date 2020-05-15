@@ -7,8 +7,10 @@ use std::{
     path::Path,
 };
 
+/// Path to config file.
 const DATA_FILE_NAME: &str = "data.json";
 
+/// Pairing of an emoji and role name.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct ReactionRole {
     pub(crate) emoji: char,
@@ -16,6 +18,7 @@ pub(crate) struct ReactionRole {
 }
 
 impl ReactionRole {
+    /// Create new struct.
     pub(crate) fn new(emoji: char, role_name: &str) -> Self {
         Self {
             emoji,
@@ -24,6 +27,7 @@ impl ReactionRole {
     }
 }
 
+/// Struct representing a monitor being constructed.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct SetupState {
     pub(crate) channel_id: u64,
@@ -33,7 +37,7 @@ pub(crate) struct SetupState {
 }
 
 impl SetupState {
-    /// Create a new, empty `SetupState`.
+    /// Create a new struct.
     pub(crate) fn new(channel_id: u64, guild_id: u64) -> Self {
         Self {
             channel_id: channel_id.to_owned(),
@@ -44,24 +48,33 @@ impl SetupState {
     }
 }
 
+/// Struct representing a monitored message.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct Monitor {
     pub(crate) channel_id: u64,
     pub(crate) guild_id: u64,
+    pub(crate) message_uid: u64,
     pub(crate) reactions: Vec<ReactionRole>,
 }
 
 impl Monitor {
-    /// Create a new struct instance.
-    pub(crate) fn new(channel_id: u64, guild_id: u64, reactions: &Vec<ReactionRole>) -> Self {
+    /// Create a new struct.
+    pub(crate) fn new(
+        channel_id: u64,
+        guild_id: u64,
+        message_uid: u64,
+        reactions: &Vec<ReactionRole>,
+    ) -> Self {
         Self {
             channel_id,
             guild_id,
+            message_uid,
             reactions: reactions.to_owned(),
         }
     }
 }
 
+/// Context manager for `Monitor` structs.
 pub(crate) struct MonitorManager;
 
 impl TypeMapKey for MonitorManager {
@@ -88,6 +101,7 @@ impl MonitorManager {
     }
 }
 
+/// Context manager for a `HashMap` of `SetupState` structs.
 pub(crate) struct StateManager;
 
 impl TypeMapKey for StateManager {

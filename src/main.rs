@@ -27,18 +27,23 @@ use message_handler::message_handler;
 mod shared;
 use shared::{MonitorManager, SetupState, StateManager};
 
+/// Struct for implementing the `EventHandler` trait on for
+/// receiving events from Discord.
 struct Handler;
 
 impl EventHandler for Handler {
+    /// Called when the bot is ready to receive events.
     fn ready(&self, _context: Context, _ready: Ready) {
         info!("Bot connected");
     }
 
+    /// Called when a reaction is added to a message the bot can see.
     fn reaction_add(&self, _ctx: Context, add_reaction: Reaction) {
         debug!("Reaction added: {:?}", add_reaction);
         // TODO check monitors, do stuff
     }
 
+    /// Called when a message is added that the bot can see.
     fn message(&self, ctx: Context, message: Message) {
         if let Err(e) = message_handler(ctx, message) {
             error!("Could not process message: {}", e);
@@ -46,6 +51,7 @@ impl EventHandler for Handler {
     }
 }
 
+/// Command group.
 #[group]
 #[commands(setup)]
 struct General;

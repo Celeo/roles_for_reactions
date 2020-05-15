@@ -3,6 +3,7 @@ use log::{debug, error, info};
 use serenity::{client::Context, model::channel::Message};
 use std::error::Error;
 
+/// Handle any messages that the bot sees.
 pub(crate) fn message_handler(ctx: Context, message: Message) -> Result<(), Box<dyn Error>> {
     if message.guild_id.is_some() {
         // in guilds, users use the commands to interact with the bot
@@ -27,7 +28,7 @@ pub(crate) fn message_handler(ctx: Context, message: Message) -> Result<(), Box<
         return Ok(());
     }
 
-    // get current state; return if there isn't any
+    // get current state; ignore if there isn't any
     let state = match state_manager.get_mut(&message.author.name) {
         Some(s) => s,
         None => return Ok(()),
