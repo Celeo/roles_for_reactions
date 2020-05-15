@@ -53,7 +53,7 @@ impl SetupState {
 pub(crate) struct Monitor {
     pub(crate) channel_id: u64,
     pub(crate) guild_id: u64,
-    pub(crate) message_uid: u64,
+    pub(crate) message_id: u64,
     pub(crate) reactions: Vec<ReactionRole>,
 }
 
@@ -62,13 +62,13 @@ impl Monitor {
     pub(crate) fn new(
         channel_id: u64,
         guild_id: u64,
-        message_uid: u64,
+        message_id: u64,
         reactions: &Vec<ReactionRole>,
     ) -> Self {
         Self {
             channel_id,
             guild_id,
-            message_uid,
+            message_id,
             reactions: reactions.to_owned(),
         }
     }
@@ -83,7 +83,7 @@ impl TypeMapKey for MonitorManager {
 
 impl MonitorManager {
     /// Save the manager's data to disk.
-    pub(crate) fn save(&self, values: &Vec<Monitor>) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn save(values: &[Monitor]) -> Result<(), Box<dyn Error>> {
         let content = serde_json::to_string(values)?;
         write(DATA_FILE_NAME, content)?;
         Ok(())
